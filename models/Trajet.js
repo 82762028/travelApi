@@ -13,6 +13,12 @@ const TrajetSchema = new mongoose.Schema({
       }
     }
   ] ,// Attribut pour l'heure (format HH:mm)
+  days: [
+    { 
+       date: {type: Number},
+
+    }
+  ] ,
   createAt:{type:Date, default: Date.now},
   updateAt:{type:Date, default:Date.now},
 });

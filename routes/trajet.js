@@ -2,7 +2,7 @@
 
 import express from 'express'
 import authMiddleware from '../middleware/authMiddleware.js'
-import {getAppTrajets,addTrajet,getTrajets,getTrajet,addHourToTrajet,updateTrajet,deleteTrajet} from '../controllers/trajetController.js'
+import {addDayToTrajet,getAppTrajets,addTrajet,getTrajets,getTrajet,addHourToTrajet,updateTrajet,deleteTrajet} from '../controllers/trajetController.js'
 
 const router = express.Router()
 
@@ -14,6 +14,8 @@ router.post('/add',authMiddleware,addTrajet)
 router.get('/:id',authMiddleware,getTrajet)
 router.put('/:id',authMiddleware,updateTrajet)
 router.post('/addhours/:id',authMiddleware,addHourToTrajet)
+router.post('/addDay/:id',authMiddleware,addDayToTrajet)
+
 router.delete('/:id',authMiddleware,deleteTrajet)
 
 
