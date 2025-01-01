@@ -34,7 +34,7 @@ const login = async (req, res) => {
     return res.status(200).json({
       success: true,
       token,
-      user: { _id: user._id, name: user.name, role: user.role,numero:user.telephone },
+      user: { _id: user._id, name: user.name, role: user.role,numero:user.telephone,compagnie:user.compagnie,ville:user.ville},
     });
   } catch (error) {
     console.error("Server error during login:", error.message);

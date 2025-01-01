@@ -4,14 +4,14 @@ import Departement from "../models/Departement.js"
 
 const addTrajet = async (req, res) => {
   try {
-    const { departure, destination, price, hours,duree } = req.body;
+    const { departure, destination, price, hours,duree,compagnieId } = req.body;
 
     // Vérifier si un trajet avec la même departure et destination existe déjà
-    const existingTrajet = await Trajet.findOne({ departure, destination });
+    const existingTrajet = await Trajet.findOne({ departure, destination,compagnieId });
     if (existingTrajet) {
       return res.status(400).json({
         success: false,
-        message: "Un trajet avec cette departure et destination existe déjà.",
+        message: "Un trajet avec cette departure et destination pour ce compagnie existe déjà.",
       });
     }
 
@@ -19,6 +19,7 @@ const addTrajet = async (req, res) => {
     const newTrajet = new Trajet({
       departure,
       destination,
+      compagnieId,
       price,
       duree
     });
@@ -102,13 +103,12 @@ const addHourToTrajet = async (req, res) => {
   }
 };
 
-
-
 const getTrajets = async (req, res) => {
   try {
     const trajets = await Trajet.find()
-      .populate('departure', 'ville') // Peuple le champ "departure" et ne récupère que la propriété "ville"
-      .populate('destination', 'ville'); // Peuple le champ "destination" et ne récupère que la propriété "ville"
+      .populate('departure', 'ville') // Peuple le champ "departure" (champ `ville` uniquement)
+      .populate('destination', 'ville') // Peuple le champ "destination" (champ `ville` uniquement)
+      .populate('compagnieId', 'name image'); // Inclure les champs "name" et "image" du modèle `Compagnie`
 
     res.status(200).json({
       success: true,
@@ -123,6 +123,46 @@ const getTrajets = async (req, res) => {
   }
 };
 
+
+
+const getAppTrajets = async (req, res) => {
+  try {
+    const { compagnie } = req.body; // Récupère la compagnie depuis le body de la requête
+
+    if (!compagnie) {
+      return res.status(400).json({
+        success: false,
+        error: 'Le champ compagnie est requis.',
+      });
+    }
+
+    // Recherche des trajets filtrés par compagnie
+    const trajets = await Trajet.find({})
+      .populate('departure', 'ville') // Peuple le champ "departure" (champ `ville` uniquement)
+      .populate('destination', 'ville') // Peuple le champ "destination" (champ `ville` uniquement)
+      .populate({
+        path: 'compagnieId',
+        select: 'name image',
+        match: { name: compagnie }, // Filtre par nom de la compagnie
+      });
+
+    // Filtre les trajets dont `compagnieId` est null après le peuplement
+    const filteredTrajets = trajets.filter((trajet) => trajet.compagnieId);
+
+    res.status(200).json({
+      success: true,
+      Trajets: filteredTrajets,
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des trajets:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des trajets.',
+    });
+  }
+};
+
+
 const getTrajet = async (req, res) => {
   try {
     const { id } = req.params;
@@ -134,6 +174,10 @@ const getTrajet = async (req, res) => {
       .populate({
         path: 'destination', // Relation pour `destination`
         select: 'name ville', // Champs spécifiques à inclure
+      })
+      .populate({
+        path: 'compagnieId', // Relation pour `CompagnieId`
+        select: 'name image', // Inclure "name" et "image"
       });
 
     if (!trajet) {
@@ -150,7 +194,7 @@ const getTrajet = async (req, res) => {
 const updateTrajet = async (req, res) => {
   try {
     const { id } = req.params; // ID du trajet
-    const { departure, destination, price, hours,duree } = req.body; // Données à mettre à jour
+    const { departure, destination, price, hours,duree, compagnieId } = req.body; // Données à mettre à jour
 
     // Vérifier si le trajet existe
     const trajet = await Trajet.findById(id);
@@ -164,7 +208,7 @@ const updateTrajet = async (req, res) => {
     if (destination) trajet.destination = destination;
     if (price) trajet.price = price;
     if (duree) trajet.duree = duree;
-    // Valider et mettre à jour les heures
+    if(compagnieId) trajet.compagnieId=compagnieId  ;  // Valider et mettre à jour les heures
     if (hours && Array.isArray(hours)) {
       const validHours = hours.filter(({ time }) => {
         const match = /^(\d{2}):(\d{2})$/.exec(time);
@@ -230,7 +274,7 @@ const deleteTrajet = async (req, res) => {
   }
 };
 
-export {addTrajet,getTrajets,getTrajet,addHourToTrajet,updateTrajet,deleteTrajet}
+export {getAppTrajets,addTrajet,getTrajets,getTrajet,addHourToTrajet,updateTrajet,deleteTrajet}
 
 
 

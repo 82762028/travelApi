@@ -19,10 +19,11 @@ import { io } from "../index.js";
       time,
       userId,
       trajetId,
+      compagnie
     } = req.body;
 
     // Valider les champs obligatoires
-    if (!date || !time || !travelId || !name || !nombre || !userId || !trajetId) {
+    if (!date || !time || !travelId || !name || !nombre || !userId || !trajetId || !compagnie) {
       return res.status(400).json({ message: 'Veuillez remplir tous les champs obligatoires.' });
     }
 
@@ -69,6 +70,7 @@ import { io } from "../index.js";
       arrived, // Horaire calculée
       userId,
       trajetId,
+      compagnie,
     });
 
     // Sauvegarder dans la base de données
@@ -214,7 +216,8 @@ const getTravels = async (req, res) => {
         path: "trajetId", // Remplit les informations du trajet
         populate: [
           { path: "departure", select: "name ville" }, // Inclut le nom et la ville de départ
-          { path: "destination", select: "name ville" } // Inclut le nom et la ville de destination
+          { path: "destination", select: "name ville" }, // Inclut le nom et la ville de destination
+          { path: "compagnieId", select: "name image" }, 
         ]
       });
 
@@ -235,8 +238,10 @@ const getTravel = async (req, res) => {
         path: "trajetId", // Remplit les informations du trajet
         populate: [
           { path: "departure", select: "name ville" }, // Inclut le nom et la ville de départ
-          { path: "destination", select: "name ville" } // Inclut le nom et la ville de destination
-        ]
+          { path: "destination", select: "name ville" }, // Inclut le nom et la ville de destination
+          { path: "compagnieId", select: "name image" }, 
+        ],
+        
       });
 
     if (!travel) {
@@ -266,13 +271,16 @@ const updateTravel = async (req, res) => {
     if (updates.name) travel.name = updates.name;
     if (updates.time) travel.time = updates.time;
     if (updates.nombre) travel.nombre = updates.nombre;
+    if (updates.compagnie) travel.compagnie = updates.compagnie;
     if (updates.trajetId) travel.trajetId = updates.trajetId; // Ajout pour trajetId
+    if (updates.statut) travel.statut = updates.statut; // Ajout pour trajetId
 
     // Mettre à jour le champ `updateAt`
     travel.updateAt = Date.now();
 
     // Sauvegarder les modifications
     const updatedTravel = await travel.save();
+    io.emit("updated", travel); // Emission pour synchronisation temps réel, si nécessaire
 
     return res.status(200).json({
       success: true,
@@ -286,6 +294,11 @@ const updateTravel = async (req, res) => {
 };
 
 
+
+
+
+
+
 const deleteTravel = async (req, res) => {
   try {
     const { id } = req.params;
@@ -294,6 +307,7 @@ const deleteTravel = async (req, res) => {
     if (!travel) {
       return res.status(404).json({ success: false, message: "Travel non trouvé." });
     }
+    io.emit("statut_remove", travel); // Emission pour synchronisation temps réel, si nécessaire
 
     return res.status(200).json({ success: true, message: "Travel supprimé avec succès." });
   } catch (error) {
@@ -301,33 +315,53 @@ const deleteTravel = async (req, res) => {
     res.status(500).json({ success: false, message: "Erreur serveur lors de la suppression du travel." });
   }
 };
- //   
- const getTravelsByUserCity = async (req, res) => {
+const getTravelsByUserCity = async (req, res) => {
   try {
     // Récupérer l'ID de l'utilisateur depuis les paramètres de la requête
     const userId = req.user._id;
-
+    const compagnie = req.user.compagnie;
     // Vérifier que l'utilisateur existe
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ success: false, message: "Utilisateur non trouvé." });
     }
 
-    // Trouver les voyages réservés par cet utilisateur
-    const travels = await Travel.find({ userId: userId }) // Filtrer par userId
+    // Rechercher les voyages réservés par cet utilisateur
+    const userTravels = await Travel.find({ userId: userId }) // Filtrer par userId
+      .populate({
+        path: "trajetId",
+        populate: [
+          { path: "departure", select: "name ville" },
+          { path: "destination", select: "name ville" },
+          { path: "compagnieId", select: "name image" }, 
+
+        ],
+      });
+
+    // Rechercher les travels où la ville de départ correspond à user.ville et compagnie
+    const departureMatches = await Travel.find({ compagnie: compagnie })
       .populate({
         path: "trajetId",
         populate: [
           { path: "departure", select: "name ville" },
           { path: "destination", select: "name ville" },
         ],
-      });
+      })
+      .then((travels) =>
+        travels.filter((travel) => travel.trajetId?.departure?.ville === user.ville)
+      );
 
-    // Répondre avec les données
+    // Combiner les résultats tout en évitant les doublons
+    const allTravels = [...userTravels, ...departureMatches].filter(
+      (value, index, self) =>
+        index === self.findIndex((t) => t._id.toString() === value._id.toString())
+    );
+
+    // Répondre avec les données combinées
     return res.status(200).json({
       success: true,
       message: "Voyages récupérés avec succès.",
-      travels: travels,
+      travels: allTravels,
     });
   } catch (error) {
     console.error("Erreur lors de la récupération des voyages :", error);
@@ -356,6 +390,8 @@ const getTravelsByUser = async (req, res) => {
         populate: [
           { path: "departure", select: "name ville" },
           { path: "destination", select: "name ville" },
+          { path: "compagnieId", select: "name image" }, 
+
         ],
       });
 
@@ -415,10 +451,45 @@ const getTravelStatsByUser = async (req, res) => {
   }
 };
 
+const updateTravelStatut = async (req, res) => {
+  try {
+    const { id } = req.params; // ID du voyage
+    const { statut } = req.body; // Texte du statut passé depuis le frontend
+
+    // Vérifier si l'ID est valide
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "ID invalide." });
+    }
+
+    // Trouver le voyage
+    const travel = await Travel.findById(id);
+    if (!travel) {
+      return res.status(404).json({ success: false, message: "Voyage non trouvé." });
+    }
+
+    // Mettre à jour le champ `statut`
+    travel.statut = statut;
+    await travel.save();
+
+    io.emit("statut_updated", travel); // Emission pour synchronisation temps réel, si nécessaire
+
+    return res.status(200).json({
+      success: true,
+      message: "Statut mis à jour avec succès.",
+      travel,
+    });
+  } catch (error) {
+    console.error("Erreur lors de la mise à jour du statut :", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erreur serveur.",
+    });
+  }
+};
 
 
 
-export {getTravelsByUser,getTravelStatsByUser,getTerminatedStatus,updateTerminatedStatus,getTravelsByUserCity ,addTravel,getTravels,getTravel,addPlaceToTravel,deleteTravel,updateTravel,validateTravel }
+export {updateTravelStatut,getTravelsByUser,getTravelStatsByUser,getTerminatedStatus,updateTerminatedStatus,getTravelsByUserCity ,addTravel,getTravels,getTravel,addPlaceToTravel,deleteTravel,updateTravel,validateTravel }
 
 
 

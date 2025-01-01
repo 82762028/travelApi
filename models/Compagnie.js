@@ -1,17 +1,17 @@
 import mongoose from 'mongoose';
 
 
-const DepartementSchema = new mongoose.Schema({
-  name: { type: String, required: true,unique:true},
-  ville: { type: String, required: true ,unique:true},
+const CompagnieSchema = new mongoose.Schema({
+  name: { type: String, required: true,unique:true },
+  image: { type: String, required: true},
   createAt:{type: Date, default:Date.now()},
   updateAt:{type:Date, default:Date.now},
 });
 
 
-const Departement = mongoose.model("Departement", DepartementSchema);
+const Compagnie = mongoose.model("Compagnie", CompagnieSchema);
 
-export default Departement;
+export default Compagnie;
 
 /*
 const DepartementSchema = new mongoose.Schema({

@@ -5,6 +5,7 @@ const TrajetSchema = new mongoose.Schema({
   destination: { type: mongoose.Schema.Types.ObjectId, ref: 'Departement', required: true }, 
   price: { type: Number, required: true }, 
   duree: { type: String},
+  compagnieId: { type: mongoose.Schema.Types.ObjectId, ref: "Compagnie" },
   hours: [
     {
       time:{

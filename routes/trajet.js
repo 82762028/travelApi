@@ -2,13 +2,13 @@
 
 import express from 'express'
 import authMiddleware from '../middleware/authMiddleware.js'
-import {addTrajet,getTrajets,getTrajet,addHourToTrajet,updateTrajet,deleteTrajet} from '../controllers/trajetController.js'
+import {getAppTrajets,addTrajet,getTrajets,getTrajet,addHourToTrajet,updateTrajet,deleteTrajet} from '../controllers/trajetController.js'
 
 const router = express.Router()
 
 router.get('/',authMiddleware,getTrajets)
 
-router.get('/app',getTrajets)
+router.post('/app', getAppTrajets);
 router.post('/add',authMiddleware,addTrajet)
 
 router.get('/:id',authMiddleware,getTrajet)

@@ -18,6 +18,8 @@ const TravelSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   trajetId: { type: mongoose.Schema.Types.ObjectId, ref: "Trajet", required: true },
   valide: { type: Boolean, default: false },
+  compagnie:{ type: String },
+  statut:{ type: String,default:"not" },
   terminated: { type: Boolean, default: false },
   createAt: { type: Date, default: Date.now },
   updateAt: { type: Date, default: Date.now },

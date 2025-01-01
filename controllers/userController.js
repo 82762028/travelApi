@@ -5,7 +5,7 @@ import { io } from "../index.js";
 
 const addUser = async (req, res) => {
   try {
-    const { name, email, telephone, password, ville, role } = req.body;
+    const { name, email, telephone, password, ville, role,compagnie } = req.body;
 
     if (!/^\d{8}$/.test(telephone)) {
       return res.status(400).json({
@@ -31,6 +31,7 @@ const addUser = async (req, res) => {
       ville,
       password: hashPassword,
       role,
+      compagnie
     });
 
     await newUser.save();
@@ -100,7 +101,7 @@ const getView = async(req,res)=>{
  const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, telephone, password, role, ville } = req.body;
+    const { name, email, telephone, password, role, ville,compagnie } = req.body;
 
     // Fetch the user to verify it exists
     const existingUser = await User.findById(id);
@@ -148,7 +149,7 @@ const getView = async(req,res)=>{
     }
     if (role) userUpdates.role = role;
     if (ville) userUpdates.ville = ville;
-
+    if (compagnie) userUpdates.compagnie = compagnie;
     const updatedUser = await User.findByIdAndUpdate(id, userUpdates, { new: true });
     return res.status(200).json({ success: true, message: "User updated successfully", user: updatedUser });
   } catch (error) {

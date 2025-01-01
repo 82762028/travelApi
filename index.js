@@ -11,6 +11,8 @@ import userRouter from './routes/user.js';
 import trajetRouter from './routes/trajet.js';
 import travelRouter from './routes/travel.js';
 import statRouter from './routes/dataStat.js';
+import compagnieRouter from './routes/compagnie.js';
+
 
 dotenv.config();
 
@@ -41,7 +43,7 @@ app.use('/api/user', userRouter);
 app.use('/api/trajet', trajetRouter);
 app.use('/api/travel', travelRouter);
 app.use('/api/stat', statRouter);
-
+app.use('/api/compagnie', compagnieRouter);
 // Initialisation de Socket.IO
 io.on('connection', (socket) => {
   console.log(`Nouvelle connexion : ${socket.id}`);
